@@ -29,24 +29,23 @@ waitForCassandra = (config) ->
   testConnection = () ->
     attempts += 1
     connectWatch.reset().start()
-    console.log "Attempting to connect to Cassandra..."
     client = new cassandra.Client(clientOptions)
     client.connect (error) ->
       if error?
         console.log "[#{error}] Attempt #{attempts} timed out. Time elapsed: #{watch}" if not quiet
-        console.log error.stack
         if watch.duration().millis() > totalTimeout
-          console.log "Could not connect to Cassandra." if not quiet
+          console.log "Could not connect to Cassandra."
+          client.shutdown()
           deferred.resolve 1
         else
+          client.shutdown()
           totalRemaining = Math.min connectTimeout, Math.max(0, totalTimeout - watch.duration().millis())
           connectDelay = Math.min totalRemaining, Math.max(0, connectTimeout - connectWatch.duration().millis())
           setTimeout testConnection, connectDelay
-        client.shutdown -> console.log "Client shutdown after failure."
       else
         watch.stop()
         console.log "Connected. #{attempts} attempts over #{watch}"
-        client.shutdown -> console.log "Client shutdown after success."
+        client.shutdown()
         deferred.resolve 0
 
   testConnection()
