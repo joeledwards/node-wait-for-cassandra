@@ -26,16 +26,15 @@ waitForCassandra = (config) ->
     socketOptions:
       connectTimeout: connectTimeout
 
-  # Recursive connection test function
-  client = new cassandra.Client(clientOptions)
-
   testConnection = () ->
     attempts += 1
     connectWatch.reset().start()
-    client.execute 'describe keyspaces', (error, result) ->
-      connectWatch.stop()
+    console.log "Attempting to connect to Cassandra..."
+    client = new cassandra.Client(clientOptions)
+    client.connect (error) ->
       if error?
         console.log "[#{error}] Attempt #{attempts} timed out. Time elapsed: #{watch}" if not quiet
+        console.log error.stack
         if watch.duration().millis() > totalTimeout
           console.log "Could not connect to Cassandra." if not quiet
           deferred.resolve 1
@@ -43,11 +42,11 @@ waitForCassandra = (config) ->
           totalRemaining = Math.min connectTimeout, Math.max(0, totalTimeout - watch.duration().millis())
           connectDelay = Math.min totalRemaining, Math.max(0, connectTimeout - connectWatch.duration().millis())
           setTimeout testConnection, connectDelay
+        client.shutdown -> console.log "Client shutdown after failure."
       else
         watch.stop()
         console.log "Connected. #{attempts} attempts over #{watch}"
-        done()
-        client.shutdown()
+        client.shutdown -> console.log "Client shutdown after success."
         deferred.resolve 0
 
   testConnection()

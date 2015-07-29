@@ -26,7 +26,8 @@
     "lib": "./lib"
   },
   "bin": {
-    "wait-for-cassandra": "./bin/wait-for-cassandra"
+    "wait-for-cassandra": "./bin/wait-for-cassandra",
+    "wait4cass": "./bin/wait-for-cassandra"
   },
   "dependencies": {
     "cassandra-driver": "~2.1",

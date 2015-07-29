@@ -6,7 +6,7 @@ CONTAINER_NAME="wait-for-cassandra-test-container"
 docker kill $CONTAINER_NAME
 docker rm $CONTAINER_NAME
 
-docker run --name=$CONTAINER_NAME -P -d cassandra:2.1
+docker run --name=$CONTAINER_NAME -P -d cassandra:2.2
 
 if [[ $PLATFORM == "Linux" ]]; then
   HOST=`docker inspect -f '{{ .NetworkSettings.IPAddress }}' ${CONTAINER_NAME}`
