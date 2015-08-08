@@ -4,39 +4,26 @@ program = require 'commander'
 durations = require 'durations'
 
 # Wait for Cassandra to become available
-waitForCassandra = (config) ->
+waitForCassandra = (config, totalTimeout=30000, quiet=false) ->
   deferred = Q.defer()
-
-  # timeouts in milliseconds
-  connectTimeout = config.connectTimeout
-  totalTimeout = config.totalTimeout
-
-  quiet = config.quiet
 
   watch = durations.stopwatch().start()
   connectWatch = durations.stopwatch()
+  connectTimeout = config?.socketOptions?.connectTimeout ? 1000
 
   attempts = 0
-
-  clientOptions =
-    contactPoints: [config.host]
-    keyspace: config.keyspace
-    protocolOptions:
-      port: config.port
-    socketOptions:
-      connectTimeout: connectTimeout
 
   testConnection = () ->
     attempts += 1
     connectWatch.reset().start()
-    client = new cassandra.Client(clientOptions)
+    client = new cassandra.Client(config)
     client.connect (error) ->
       if error?
         console.log "[#{error}] Attempt #{attempts} timed out. Time elapsed: #{watch}" if not quiet
         if watch.duration().millis() > totalTimeout
-          console.log "Could not connect to Cassandra."
+          console.log "Could not connect to Cassandra." if not quiet
           client.shutdown()
-          deferred.resolve 1
+          deferred.resolve false
         else
           client.shutdown()
           totalRemaining = Math.min connectTimeout, Math.max(0, totalTimeout - watch.duration().millis())
@@ -44,9 +31,9 @@ waitForCassandra = (config) ->
           setTimeout testConnection, connectDelay
       else
         watch.stop()
-        console.log "Connected. #{attempts} attempts over #{watch}"
+        console.log "Connected. #{attempts} attempts over #{watch}" if not quiet
         client.shutdown()
-        deferred.resolve 0
+        deferred.resolve true
 
   testConnection()
 
@@ -63,16 +50,21 @@ runScript = () ->
     .option '-T, --total-timeout <milliseconds>', 'Total timeout across all connect attempts (default is 30000)', parseInt
     .parse(process.argv)
 
-  config =
-    host: program.host ? 'localhost'
-    port: program.port ? 9042
-    keyspace: program.keyspace ? 'system'
-    connectTimeout: program.connectTimeout ? 1000
-    totalTimeout: program.totalTimeout ? 30000
-    quiet: program.quiet ? false
+  connectTimeout = program.connectTimeout ? 1000
+  totalTimeout = program.totalTimeout ? 30000
+  quiet = program.quiet ? false
 
-  waitForCassandra(config)
-  .then (code) ->
+  config =
+    contactPoints: [program.host ? 'localhost']
+    keyspace: program.keyspace ? 'system'
+    protocolOptions:
+      port: program.port ? 9042
+    socketOptions:
+      connectTimeout: connectTimeout
+
+  waitForCassandra(config, totalTimeout,  quiet)
+  .then (connected) ->
+    code = if connected then 0 else 1
     process.exit code
 
 # Module

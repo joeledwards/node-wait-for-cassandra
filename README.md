@@ -20,11 +20,17 @@ Run as a module within another script:
 ```coffeescript
 waitForCass = require 'wait-for-cassandra'
 config =
-  username: user
-  password: pass
-  quiet: true
+  contactPoints: ['localhost']
+  keyspace: 'test'
+  protocolOptions:
+    port: 9043
+  socketOptions:
+    connectTimeout: 3000
 
-waitForCass.wait(config)
+waitForCass.wait(config, 20000, true)
+.then (result) ->
+  message = if result then "Online" else "Offline"
+  console.log "Cassandra is #{message}"
 ```
       
 
